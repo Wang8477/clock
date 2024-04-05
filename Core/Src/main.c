@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "adc.h"
+#include "dma.h"
 #include "i2c.h"
 #include "spi.h"
 #include "tim.h"
@@ -26,6 +27,11 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "time.h"
+#include "LED.h"
+#include "LM75AD.h"
+#include "multi_button.h"
+#include "MY_OLED.h"
 
 /* USER CODE END Includes */
 
@@ -47,7 +53,9 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+double temperature=0;//温度
+volatile  float voltage=0;
+char buffer[100];		//字符串缓存区
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -90,12 +98,16 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_ADC1_Init();
   MX_I2C1_Init();
   MX_SPI1_Init();
   MX_TIM10_Init();
   MX_TIM11_Init();
   /* USER CODE BEGIN 2 */
+	LM75AD_Init();
+	OLED_Init();
+	OLED_DisPlay_On();
 
   /* USER CODE END 2 */
 
@@ -106,6 +118,24 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+
+		HAL_ADC_Start(&hadc1);	
+		HAL_ADC_PollForConversion(&hadc1, 50);   //等待转换完成，50为最大等待时间，单位为ms
+		if(HAL_IS_BIT_SET(HAL_ADC_GetState(&hadc1), HAL_ADC_STATE_REG_EOC))
+		{
+		voltage = HAL_ADC_GetValue(&hadc1)*3.3f/4096;   //获取AD值
+		}
+		
+		temperature = LM75AD_GetTemp();
+
+		OLED_Refresh();
+		sprintf(buffer,"%.2f",voltage);
+		OLED_ShowStringPro(25,49,buffer,16);
+		OLED_ShowStringPro(10,49,"V:",16);//显示电压
+		OLED_ShowStringPro(70,49,"T:",16);//显示温度
+		sprintf(buffer,"%.1f",temperature);
+		OLED_ShowStringPro(85,49,buffer,16);
+	
   }
   /* USER CODE END 3 */
 }
