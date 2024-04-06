@@ -30,7 +30,6 @@
 #include "time.h"
 #include "LED.h"
 #include "LM75AD.h"
-#include "multi_button.h"
 #include "MY_OLED.h"
 
 /* USER CODE END Includes */
@@ -66,6 +65,11 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+struct Button btn1;
+struct Button btn2;
+struct Button btn3;
+struct Button btn4;
 
 /* USER CODE END 0 */
 
@@ -105,9 +109,30 @@ int main(void)
   MX_TIM10_Init();
   MX_TIM11_Init();
   /* USER CODE BEGIN 2 */
-	LM75AD_Init();
+		__HAL_TIM_CLEAR_IT(&htim10,TIM_IT_UPDATE);//清空定时器10中断标志（走时）
+	HAL_TIM_Base_Start_IT(&htim10);//启动定时器
+	__HAL_TIM_CLEAR_IT(&htim11,TIM_IT_UPDATE);//清空定时器4中断标志（检测按键）
+	HAL_TIM_Base_Start_IT(&htim11);//启动定时器
+	
+	
+	clock_init();                         //时间初始化
+
+	button_init(&btn1, read_button_GPIO, 0, 0);
+	button_init(&btn2, read_button_GPIO, 0, 1);
+	button_init(&btn3, read_button_GPIO, 0, 2);
+	button_init(&btn4, read_button_GPIO, 0, 3);    //初始化按键
+	LM75AD_Init();																			//初始化温度
 	OLED_Init();
 	OLED_DisPlay_On();
+	button_attach(&btn1, SINGLE_CLICK, BTN1_SINGLE_Click_Handler);
+	button_attach(&btn2, PRESS_DOWN, BTN2_SINGLE_Click_Handler);
+	button_attach(&btn3, SINGLE_CLICK, BTN3_SINGLE_Click_Handler);
+	button_attach(&btn3, LONG_PRESS_START, BTN3_LONG_PRESS_START_Handler);
+	button_attach(&btn4, PRESS_UP, BTN4_SINGLE_Click_Handler);
+	button_start(&btn1);
+	button_start(&btn2);
+	button_start(&btn3);
+	button_start(&btn4);
 
   /* USER CODE END 2 */
 
@@ -118,23 +143,80 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-
+ /*****************读取电压************************/
 		HAL_ADC_Start(&hadc1);	
 		HAL_ADC_PollForConversion(&hadc1, 50);   //等待转换完成，50为最大等待时间，单位为ms
 		if(HAL_IS_BIT_SET(HAL_ADC_GetState(&hadc1), HAL_ADC_STATE_REG_EOC))
 		{
 		voltage = HAL_ADC_GetValue(&hadc1)*3.3f/4096;   //获取AD值
 		}
-		
+/******************读取温度************************/
 		temperature = LM75AD_GetTemp();
-
+/******************显示灯****************************/		
+		if(setflag )
+		{
+			HAL_GPIO_WritePin (LED3_GPIO_Port ,LED3_Pin ,GPIO_PIN_SET );
+			if(set==0)
+			{HAL_GPIO_WritePin (LED0_GPIO_Port ,LED0_Pin ,GPIO_PIN_SET );
+			HAL_GPIO_WritePin (LED1_GPIO_Port ,LED1_Pin ,GPIO_PIN_RESET );
+			HAL_GPIO_WritePin (LED2_GPIO_Port ,LED2_Pin ,GPIO_PIN_RESET );}
+			else if(set==1)
+			{HAL_GPIO_WritePin (LED1_GPIO_Port ,LED1_Pin ,GPIO_PIN_SET );
+			HAL_GPIO_WritePin (LED0_GPIO_Port ,LED0_Pin ,GPIO_PIN_RESET );
+			HAL_GPIO_WritePin (LED2_GPIO_Port ,LED2_Pin ,GPIO_PIN_RESET );}
+			else 
+			{HAL_GPIO_WritePin (LED2_GPIO_Port ,LED2_Pin ,GPIO_PIN_SET );
+			HAL_GPIO_WritePin (LED1_GPIO_Port ,LED1_Pin ,GPIO_PIN_RESET );
+			HAL_GPIO_WritePin (LED0_GPIO_Port ,LED0_Pin ,GPIO_PIN_RESET );}
+		}
+		else 
+		{	
+			HAL_GPIO_WritePin (LED3_GPIO_Port ,LED3_Pin ,GPIO_PIN_RESET );
+			HAL_GPIO_WritePin (LED0_GPIO_Port ,LED0_Pin ,GPIO_PIN_RESET );
+			HAL_GPIO_WritePin (LED1_GPIO_Port ,LED1_Pin ,GPIO_PIN_RESET );
+			HAL_GPIO_WritePin (LED2_GPIO_Port ,LED2_Pin ,GPIO_PIN_RESET );
+		}
+/********************蜂鸣器************************/
+		if(clock.alarm_flag )
+			{HAL_GPIO_WritePin (BEEP_GPIO_Port ,BEEP_Pin ,GPIO_PIN_SET);}
+		else HAL_GPIO_WritePin (BEEP_GPIO_Port ,BEEP_Pin ,GPIO_PIN_RESET);
+/*******************显示屏*************************/	
 		OLED_Refresh();
+		if(select==0 )
+		{
+			OLED_ShowChinese (0,0,27,16);
+			OLED_ShowChinese (16,0,28,16);
+		  sprintf(buffer,"%.2d",clock.time_hour);
+			OLED_ShowStringPro(16,23,buffer,24);
+			OLED_ShowStringPro(43,23,"_",16);
+			sprintf(buffer,"%.2d",clock.time_minute);
+			OLED_ShowStringPro(53,23,buffer,24);
+			OLED_ShowStringPro(80,23,"_",16);
+			sprintf(buffer,"%.2d",clock.time_second  );
+			OLED_ShowStringPro(90,23,buffer,24);
+		}
+		else 
+		{
+			OLED_ShowChinese (0,0,31,16);
+			OLED_ShowChinese (16,0,32,16);
+			sprintf(buffer,"%.2d",clock.alarm_hour);
+			OLED_ShowStringPro(16,23,buffer,24);
+			OLED_ShowStringPro(43,23,"_",16);
+			sprintf(buffer,"%.2d",clock.alarm_minute);
+			OLED_ShowStringPro(53,23,buffer,24);
+			OLED_ShowStringPro(80,23,"_",16);
+			sprintf(buffer,"%.2d",clock.alarm_second  );
+			OLED_ShowStringPro(90,23,buffer,24);
+		}
+		
 		sprintf(buffer,"%.2f",voltage);
 		OLED_ShowStringPro(25,49,buffer,16);
 		OLED_ShowStringPro(10,49,"V:",16);//显示电压
 		OLED_ShowStringPro(70,49,"T:",16);//显示温度
 		sprintf(buffer,"%.1f",temperature);
 		OLED_ShowStringPro(85,49,buffer,16);
+		OLED_ShowChinese (96,0,44,16);
+		OLED_ShowChinese (112,0,45,16);
 	
   }
   /* USER CODE END 3 */
@@ -187,6 +269,8 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+
 
 /* USER CODE END 4 */
 
