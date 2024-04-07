@@ -58,6 +58,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 }
 void  BTN1_SINGLE_Click_Handler()
 {
+
 }
 void  BTN2_SINGLE_Click_Handler()
 {

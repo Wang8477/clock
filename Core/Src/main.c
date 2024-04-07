@@ -28,7 +28,6 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "time.h"
-#include "LED.h"
 #include "LM75AD.h"
 #include "MY_OLED.h"
 
@@ -53,7 +52,7 @@
 
 /* USER CODE BEGIN PV */
 double temperature=0;//温度
-volatile  float voltage=0;
+volatile  float voltage=0;  //电压
 char buffer[100];		//字符串缓存区
 /* USER CODE END PV */
 
@@ -66,7 +65,7 @@ void SystemClock_Config(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-struct Button btn1;
+struct Button btn1;           //结构化按键
 struct Button btn2;
 struct Button btn3;
 struct Button btn4;
@@ -122,13 +121,13 @@ int main(void)
 	button_init(&btn3, read_button_GPIO, 0, 2);
 	button_init(&btn4, read_button_GPIO, 0, 3);    //初始化按键
 	LM75AD_Init();																			//初始化温度
-	OLED_Init();
-	OLED_DisPlay_On();
+	OLED_Init();                                   //OLED初始化
+	OLED_DisPlay_On();														//打开OLED
 	button_attach(&btn1, SINGLE_CLICK, BTN1_SINGLE_Click_Handler);
-	button_attach(&btn2, PRESS_DOWN, BTN2_SINGLE_Click_Handler);
+	button_attach(&btn2, SINGLE_CLICK, BTN2_SINGLE_Click_Handler);
 	button_attach(&btn3, SINGLE_CLICK, BTN3_SINGLE_Click_Handler);
 	button_attach(&btn3, LONG_PRESS_START, BTN3_LONG_PRESS_START_Handler);
-	button_attach(&btn4, PRESS_UP, BTN4_SINGLE_Click_Handler);
+	button_attach(&btn4, SINGLE_CLICK, BTN4_SINGLE_Click_Handler);
 	button_start(&btn1);
 	button_start(&btn2);
 	button_start(&btn3);
@@ -181,10 +180,10 @@ int main(void)
 			{HAL_GPIO_WritePin (BEEP_GPIO_Port ,BEEP_Pin ,GPIO_PIN_SET);}
 		else HAL_GPIO_WritePin (BEEP_GPIO_Port ,BEEP_Pin ,GPIO_PIN_RESET);
 /*******************显示屏*************************/	
-		OLED_Refresh();
-		if(select==0 )
+		OLED_Refresh();														//刷新缓存
+		if(select==0 )                             //显示当前时间
 		{
-			OLED_ShowChinese (0,0,27,16);
+			OLED_ShowChinese (0,0,27,16);             
 			OLED_ShowChinese (16,0,28,16);
 		  sprintf(buffer,"%.2d",clock.time_hour);
 			OLED_ShowStringPro(16,23,buffer,24);
@@ -195,7 +194,7 @@ int main(void)
 			sprintf(buffer,"%.2d",clock.time_second  );
 			OLED_ShowStringPro(90,23,buffer,24);
 		}
-		else 
+		else                                      //切换成闹钟
 		{
 			OLED_ShowChinese (0,0,31,16);
 			OLED_ShowChinese (16,0,32,16);
